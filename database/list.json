@@ -1,0 +1,14 @@
+[
+  {
+    "cmd": "test",
+    "respon": "Hello! 𝙳𝙰𝚁𝙺 𝚇𝙳 is working perfectly!"
+  },
+  {
+    "cmd": "hello",
+    "respon": "Hi there! How can I help you today?"
+  },
+  {
+    "cmd": "info",
+    "respon": "🤖 𝙳𝙰𝚁𝙺 𝚇𝙳 INFORMATION:\n• Version: 1.0\n• Status: Online\n• Features: Command response system\n• Created with ❤️"
+  }
+]
