@@ -1,6 +1,8 @@
 Dark-MD 🤖
 
-https://files.catbox.moe/1fpbzo.png
+<div align="center">
+  <img src="https://files.catbox.moe/1fpbzo.png" alt="Dark-MD Banner" width="600"/>
+</div>
 
 A powerful and feature-rich WhatsApp bot built with MD (Multi-Device) support, offering seamless performance and extensive functionality for all your messaging needs.
 
@@ -55,47 +57,55 @@ npm start
 
 🛠️ Hosting Solutions
 
-😩 ᴛɪʀᴇᴅ ᴏғ sʟᴏᴡ, ᴜɴsᴇᴄᴜʀᴇ ᴜsᴇʀ ᴘᴀɴᴇʟs?
+😩 Tired of slow, unsecure user panels?
 
-🚀 ɴᴇᴇᴅ ᴀɴ ᴜɴʟɪᴍɪᴛᴇᴅ, ғᴀsᴛ & sᴛᴀʙʟᴇ ᴄᴘᴀɴᴇʟ?ɢᴏᴛ ʏᴏᴜ ᴄᴏᴠᴇʀᴇᴅ!
+🚀 Need an unlimited, fast & stable cpanel? Got you covered!
 
-💰 ᴘᴀɴᴇʟ ᴘʀɪᴄɪɴɢ – ᴀғғᴏʀᴅᴀʙʟᴇ & ʀᴇʟɪᴀʙʟᴇ
+💰 Panel Pricing – Affordable & Reliable
 
-🔹 ʀᴇɢᴜʟᴀʀ ᴘʟᴀɴs
+🔹 Regular Plans
 
-• 1ɢʙ – ₦500
-• 2ɢʙ – ₦700
-• 3ɢʙ – ₦800
-• 4ɢʙ – ₦900
-• 5ɢʙ – ₦1000
-• 6ɢʙ – ₦1200
-• 7ɢʙ – ₦1300
-• 8ɢʙ – ₦1400
-• 9ɢʙ – ₦1400
-• 10ɢʙ – ₦1500
+• 1GB – ₦500
+• 2GB – ₦700
+• 3GB – ₦800
+• 4GB – ₦900
+• 5GB – ₦1000
+• 6GB – ₦1200
+• 7GB – ₦1300
+• 8GB – ₦1400
+• 9GB – ₦1400
+• 10GB – ₦1500
 
-🔹 ᴘʀᴇᴍɪᴜᴍ ᴘʟᴀɴ
+🔹 Premium Plan
 
-• ᴜɴʟɪᴍɪᴛᴇᴅ – ₦2500
+• Unlimited – ₦2500
 
-🔹 sᴘᴇᴄɪᴀʟ ᴀᴅᴍɪɴ ᴘᴀᴄᴋᴀɢᴇ
+🔹 Special Admin Package
 
-• ᴀᴅᴍɪɴ – ₦5000
-ɪɴᴄʟᴜᴅᴇs:
-✔️ ᴍᴀx 15 ᴘᴀɴᴇʟs
-✔️ ᴀʟʟ ғᴇᴀᴛᴜʀᴇs ᴇɴᴀʙʟᴇᴅ
+• Admin – ₦5000
+Includes:
+✔️ Max 15 panels
+✔️ All features enabled
 
 —
 
-🚀 ʀᴇᴀᴅʏ ᴛᴏ ɢᴇᴛ sᴛᴀʀᴛᴇᴅ?
+🚀 Ready to get started?
 
-ᴏʀᴅᴇʀ ɪɴsᴛᴀɴᴛʟʏ ʙᴇʟᴏᴡ:
+Order instantly below:
 
 👉 https://t.me/devemps
 
-✅ ғᴀsᴛ sᴇᴛᴜᴘ
-✅ ᴀғғᴏʀᴅᴀʙʟᴇ ʀᴀᴛᴇs (ᴀʟʟ ᴘʀɪᴄᴇs ɴᴇɢᴏᴛɪᴀʙʟᴇ)
-✅ ᴛʀᴜsᴛᴇᴅ sᴜᴘᴘᴏʀᴛ
+✅ Fast setup
+✅ Affordable rates (all prices negotiable)
+✅ Trusted support
+
+⭐ Support the Project
+
+If you find this project helpful, please give it a star! ⭐
+
+```bash
+# Click the star button at the top right of the repository!
+```
 
 🤝 Contributing
 
@@ -111,15 +121,7 @@ We welcome contributions! Feel free to:
 For support and queries:
 
 · 📧 Open an issue on GitHub
-· 💬 Join our Telegram channel
-
-⭐ Support the Project
-
-If you find this project helpful, please give it a star! ⭐
-
-```bash
-# Star the repository to show your support!
-```
+· 💬 Contact on Telegram: @devemps
 
 ---
 
@@ -133,5 +135,6 @@ Made with ❤️ by C0D3-BR34K3R001
 
 https://img.shields.io/github/stars/C0D3-BR34K3R001/Dark-MD?style=social
 https://img.shields.io/github/forks/C0D3-BR34K3R001/Dark-MD?style=social
+https://img.shields.io/github/issues/C0D3-BR34K3R001/Dark-MD
 
 </div>
