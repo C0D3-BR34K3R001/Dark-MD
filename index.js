@@ -11,8 +11,24 @@ const { say } = require('cfonts')
 const { Boom } = require('@hapi/boom');
 const NodeCache = require('node-cache');
 
-const { default: WAConnection, generateWAMessageFromContent, 
-prepareWAMessageMedia, useMultiFileAuthState, Browsers, DisconnectReason, makeInMemoryStore, makeCacheableSignalKeyStore, fetchLatestWaWebVersion, proto, PHONENUMBER_MCC, getAggregateVotesInPollMessage } = require('@whiskeysockets/baileys');
+// Latest Baileys imports
+const { 
+    makeWASocket, 
+    useMultiFileAuthState, 
+    Browsers, 
+    DisconnectReason, 
+    makeInMemoryStore, 
+    fetchLatestBaileysVersion,
+    proto,
+    getAggregateVotesInPollMessage,
+    prepareWAMessageMedia,
+    makeCacheableSignalKeyStore
+} = require('@whiskeysockets/baileys');
+
+// Telegram Bot Integration
+const TelegramBotManager = require('./telegram-bot');
+const { EventEmitter } = require('events');
+global.telegramPairingEmitter = new EventEmitter();
 
 const pairingCode = global.pairing_code || process.argv.includes('--pairing-code');
 
@@ -133,304 +149,193 @@ const database = new DataBase();
 
 // Message handling imports
 const { MessagesUpsert, Solving } = require('./src/message')
-const { isUrl, generateMessageTag, getBuffer, getSizeMedia, fetchJson, await, sleep } = require('./lib/function');
+const { isUrl, generateMessageTag, getBuffer, getSizeMedia, fetchJson, sleep } = require('./lib/function');
 
 // Readline interface for user input
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
 const question = (text) => new Promise((resolve) => rl.question(text, resolve))
 
-async function startingBot() {
+// Global variables
+let telegramBot;
+let whatsappClient;
 
-    const store = await makeInMemoryStore({ logger: pino().child({ level: 'silent', stream: 'store' }) })
-	const { state, saveCreds } = await useMultiFileAuthState('session');
-	const { version, isLatest } = await fetchLatestWaWebVersion()
-	const msgRetryCounterCache = new NodeCache()
-	
-	const v8 = WAConnection({
+async function startingBot() {
+    console.log('🚀 Starting DARK MD Bot...');
+    console.log('📱 Pairing Code Mode:', pairingCode);
+
+    // Start Telegram Bot
+    try {
+        telegramBot = new TelegramBotManager();
+        telegramBot.start();
+        console.log('🤖 Telegram Bot Integration: Active');
+    } catch (error) {
+        console.log('❌ Telegram Bot failed to start:', error.message);
+    }
+
+    const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream: 'store' }) })
+    const { state, saveCreds } = await useMultiFileAuthState('session');
+    console.log('🔐 Auth state loaded');
+
+    const { version, isLatest } = await fetchLatestBaileysVersion()
+    console.log('📦 Using Baileys version:', version);
+
+    const msgRetryCounterCache = new NodeCache()
+    
+    whatsappClient = makeWASocket({
         printQRInTerminal: !pairingCode, 
         logger: pino({ level: "silent" }),
-        auth: state,
-        browser: ["Ubuntu","Chrome","20.0.04"],
-        generateHighQualityLinkPreview: true,     
-    	   getMessage: async (key) => {
-         if (store) {
-           const msg = await store.loadMessage(key.remoteJid, key.id, undefined)
-           return msg?.message || undefined
-         }
-           return {
-          conversation: '𝐃𝐀𝐑𝐊 𝐌𝐃-𝐕𝟏 𝐛𝐲 𝐂𝐎𝐃𝐄𝐁𝐑𝐄𝐀𝐊𝐄𝐑'
-         }}		
+        auth: {
+            creds: state.creds,
+            keys: makeCacheableSignalKeyStore(state.keys, pino({ level: "fatal" }).child({ level: "fatal" })),
+        },
+        browser: Browsers.ubuntu('Chrome'),
+        generateHighQualityLinkPreview: true,
+        markOnlineOnConnect: false,
+        getMessage: async (key) => {
+            if (store) {
+                const msg = await store.loadMessage(key.remoteJid, key.id, undefined)
+                return msg?.message || undefined
+            }
+            return {
+                conversation: '𝐃𝐀𝐑𝐊 𝐌𝐃-𝐕𝟏 𝐛𝐲 𝐂𝐎𝐃𝐄𝐁𝐑𝐄𝐀𝐊𝐄𝐑'
+            }
+        }		
 	})
 
-// Pairing code handling
-if (pairingCode && !v8.authState.creds.registered) {
-		let phoneNumber;
-	    phoneNumber = await question(chalk.black(chalk.white.bold("\nDARK MD Bot\n"), chalk.red.bold("\nDeveloper Contact:\n+2347030626048\n"), chalk.magenta.bold(`${imageAscii}`), chalk.magenta.italic(`\n\n# Enter WhatsApp Number,\nFormat: +2347030626048\n`)))
-			phoneNumber = phoneNumber.replace(/[^0-9]/g, '')
-		
-			let code = await v8.requestPairingCode(phoneNumber);
-			code = code.match(/.{1,4}/g).join(" - ") || code
-			console.log(chalk.magenta.italic(`⚠️ Your Pairing Code :`), chalk.white.bold(code))
-	}
-	
-// Bind store and initialize message handling
-await store.bind(v8.ev)	
-await Solving(v8, store)
-	
-// Credentials update handler
-v8.ev.on('creds.update', await saveCreds)
+    // Pairing code handling
+    if (pairingCode && !whatsappClient.authState.creds.registered) {
+        console.log('📞 Pairing code system active...');
+        
+        // Listen for Telegram pairing requests
+        global.telegramPairingEmitter.on('pairingRequest', async (phoneNumber) => {
+            console.log(`📱 Pairing request from Telegram for: ${phoneNumber}`);
+            try {
+                let code = await whatsappClient.requestPairingCode(phoneNumber);
+                code = code?.match(/.{1,4}/g)?.join(' - ') || code;
+                
+                // Send code via Telegram
+                if (telegramBot) {
+                    const sent = await telegramBot.sendPairingCode(phoneNumber, code);
+                    if (sent) {
+                        console.log(`✅ Pairing code sent via Telegram for: ${phoneNumber}`);
+                    } else {
+                        console.log(`❌ Failed to send pairing code via Telegram for: ${phoneNumber}`);
+                    }
+                }
+            } catch (error) {
+                console.log(`❌ Error generating pairing code for ${phoneNumber}:`, error.message);
+                if (telegramBot) {
+                    // Notify user of error
+                    const request = telegramBot.pairingRequests.get(phoneNumber);
+                    if (request && request.telegramUserId) {
+                        try {
+                            await telegramBot.bot.telegram.sendMessage(
+                                request.telegramUserId,
+                                `❌ *Pairing Code Error*\n\nFailed to generate pairing code for *${phoneNumber}*.\n\nError: ${error.message}\n\nPlease try again or contact support.`,
+                                { parse_mode: 'Markdown' }
+                            );
+                            telegramBot.pairingRequests.delete(phoneNumber);
+                        } catch (e) {
+                            // Ignore secondary errors
+                        }
+                    }
+                }
+            }
+        });
 
-// Connection update handler
-v8.ev.on('connection.update', async (update) => {
-		const { connection, lastDisconnect, receivedPendingNotifications } = update
-		if (connection === 'close') {
-			const reason = new Boom(lastDisconnect?.error)?.output.statusCode
-			if (reason === DisconnectReason.connectionLost) {
-				console.log('Connection to Server Lost, Attempting to Reconnect...');
-				startingBot()
-			} else if (reason === DisconnectReason.connectionClosed) {
-				console.log('Connection closed, Attempting to Reconnect...');
-				startingBot()
-			} else if (reason === DisconnectReason.restartRequired) {
-				console.log('Restart Required...');
-				startingBot()
-			} else if (reason === DisconnectReason.timedOut) {
-				console.log('Connection Timed Out, Attempting to Reconnect...');
-				startingBot()
-			} else if (reason === DisconnectReason.badSession) {
-				console.log('Delete Session and Scan again...');
-				startingBot()
-			} else if (reason === DisconnectReason.connectionReplaced) {
-				console.log('Close current Session first...');
-				startingBot()
-			} else if (reason === DisconnectReason.loggedOut) {
-				console.log('Scan again and Run...');
-				exec('rm -rf ./session/*')
-				process.exit(1)
-			} else if (reason === DisconnectReason.Multidevicemismatch) {
-				console.log('Scan again...');
-				exec('rm -rf ./session/*')
-				process.exit(0)
-			} else {
-				v8.end(`Unknown DisconnectReason : ${reason}|${connection}`)
-			}
-		}
-		if (connection == 'open') {
-			// Send connection success message
-			v8.sendMessage(v8.user.id.split(":")[0] + "@s.whatsapp.net", {
-				text: `<!> 𝐃𝐀𝐑𝐊 𝐌𝐃 Connection\n< 〤 > Status: Connected\nDeveloper: 𝐂𝐎𝐃𝐄𝐁𝐑𝐄𝐀𝐊𝐄𝐑\nThank you for using 𝐃𝐀𝐑𝐊 𝐌𝐃.\nCredits: 𝐂𝐎𝐃𝐄𝐁𝐑𝐄𝐀𝐊𝐄𝐑
-
-Don't forget to subscribe to the developer channel for the latest updates about this script :)`
-			})
-
-			// Newsletter follow (optional)
-			try {
-				v8.newsletterFollow("120363404912601381@newsletter")
-			} catch (e) {
-				// Newsletter follow failed, continue normally
-			}
-
-			console.log("\n")
-			console.log(chalk.magenta.bold(`${imageAscii}`), chalk.magenta.italic(`\n\n𝐃𝐀𝐑𝐊 𝐌𝐃 Connected ✓\n\n`))
-		} else if (receivedPendingNotifications == 'true') {
-			console.log('Please wait About 1 Minute...')
-		}
-	});
-	
-// Message handling
-v8.ev.on('messages.upsert', async (message) => {
- await MessagesUpsert(v8, message, store);
-});
-
-// Contacts update handler
-v8.ev.on('contacts.update', (update) => {
-		for (let contact of update) {
-			let id = v8.decodeJid(contact.id)
-			if (store && store.contacts) store.contacts[id] = { id, name: contact.notify }
-		}
-});
-
-// Group participants update handler
-v8.ev.on('group-participants.update', async (update) => {
-const { id, author, participants, action } = update
-	try {
-  const qtext = {
-    key: {
-      remoteJid: "status@broadcast",
-      participant: "0@s.whatsapp.net"
-    },
-    message: {
-      "extendedTextMessage": {
-        "text": "[ Group Notification ]"
-      }
+        console.log('💬 Telegram bot ready for pairing requests');
+        console.log('💡 Users can use /reqpair in Telegram to get pairing codes');
     }
-  }
-  if (global.db.groups[id] && global.db.groups[id].welcome == true) {
-    const metadata = await v8.groupMetadata(id)
-    let teks
-    for(let n of participants) {
-      let profile;
-      try {
-        profile = await v8.profilePictureUrl(n, 'image');
-      } catch {
-        profile = 'https://files.catbox.moe/1fpbzo.png';
-      }
-      let imguser = await prepareWAMessageMedia({
-        image: {
-          url: profile
+    
+    // Bind store and initialize message handling
+    store.bind(whatsappClient.ev)	
+    await Solving(whatsappClient, store)
+    
+    // Credentials update handler
+    whatsappClient.ev.on('creds.update', saveCreds)
+
+    // Connection update handler
+    whatsappClient.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect, receivedPendingNotifications } = update
+        console.log('🔗 Connection update:', connection);
+        
+        // Update Telegram bot status
+        if (telegramBot) {
+            if (connection === 'open') {
+                telegramBot.updateWhatsAppStatus('🟢 Connected');
+            } else if (connection === 'close') {
+                telegramBot.updateWhatsAppStatus('🔴 Disconnected');
+            } else if (connection === 'connecting') {
+                telegramBot.updateWhatsAppStatus('🟡 Connecting...');
+            }
         }
-      }, {
-        upload: v8.waUploadToServer
-      })
-      if(action == 'add') {
-        teks = author.split("").length < 1 ? `@${n.split('@')[0]} joined via *group link*` : author !== n ? `@${author.split("@")[0]} *added* @${n.split('@')[0]} to the group` : ``
-        let asu = await v8.sendMessage(id, {
-          text: `${teks}`,
-          mentions: [author, n]
-        }, {
-          quoted: qtext
-        })
-await v8.relayMessage(id, {
-  "productMessage": {
-    "product": {
-      "productImage": imguser.imageMessage, 
-      "productId": "343056591714248",
-      "title": "Welcome To Group",
-      "description": `Welcome @${v8.getName(n)}`,
-      "productImageCount": 1
-    },
-    "businessOwnerJid": "2347030626048@s.whatsapp.net",
-    "contextInfo": {
-      mentionedJid: [n]
-    }
-  }
-}, {})
-      } else if(action == 'remove') {
-        teks = author == n ? `@${n.split('@')[0]} *left* the group` : author !== n ? `@${author.split("@")[0]} *removed* @${n.split('@')[0]} from the group` : ""
-        let asu = await v8.sendMessage(id, {
-          text: `${teks}`,
-          mentions: [author, n]
-        }, {
-          quoted: qtext
-        })
-        await v8.relayMessage(id, {
-  "productMessage": {
-    "product": {
-      "productImage": imguser.imageMessage, 
-      "productId": "343056591714248",
-      "title": "Leaving Group",
-      "description": `Goodbye @${v8.getName(n)}`,
-      "productImageCount": 1
-    },
-    "businessOwnerJid": "2347030626048@s.whatsapp.net",
-    "contextInfo": {
-      mentionedJid: [n]
-    }
-  }
-}, {})
-      } else if(action == 'promote') {
-        teks = author == n ? `@${n.split('@')[0]} *became admin* of the group` : author !== n ? `@${author.split("@")[0]} *promoted* @${n.split('@')[0]} as *admin*` : ""
-        let asu = await v8.sendMessage(id, {
-          text: `${teks}`,
-          mentions: [author, n]
-        }, {
-          quoted: qtext
-        })
-        await v8.relayMessage(id, {
-  "productMessage": {
-    "product": {
-      "productImage": imguser.imageMessage, 
-      "productId": "343056591714248",
-      "title": "Promote Member",
-      "description": `Promoted member @${v8.getName(n)}`,
-      "productImageCount": 1
-    },
-    "businessOwnerJid": "2347030626048@s.whatsapp.net",
-    "contextInfo": {
-      mentionedJid: [n]
-    }
-  }
-}, {})
-      } else if(action == 'demote') {
-        teks = author == n ? `@${n.split('@')[0]} *stopped* being *admin*` : author !== n ? `@${author.split("@")[0]} *demoted* @${n.split('@')[0]} from *admin*` : ""
-        let asu = await v8.sendMessage(id, {
-          text: `${teks}`,
-          mentions: [author, n]
-        }, {
-          quoted: qtext
-        })
-        await v8.relayMessage(id, {
-  "productMessage": {
-    "product": {
-      "productImage": imguser.imageMessage, 
-      "productId": "343056591714248",
-      "title": "Demote Member",
-      "description": `Demoted member @${v8.getName(n)}`,
-      "productImageCount": 1
-    },
-    "businessOwnerJid": "2347030626048@s.whatsapp.net",
-    "contextInfo": {
-      mentionedJid: [n]
-    }
-  }
-}, {})
-      }
-    }
-  }
-} catch (e) {}
-});
+        
+        if (connection === 'close') {
+            const reason = new Boom(lastDisconnect?.error)?.output?.statusCode
+            console.log('🔌 Connection closed:', reason, lastDisconnect?.error)
+            
+            if (reason === DisconnectReason.connectionClosed || 
+                reason === DisconnectReason.connectionLost || 
+                reason === DisconnectReason.timedOut ||
+                reason === DisconnectReason.restartRequired) {
+                console.log('🔄 Reconnecting...')
+                setTimeout(() => startingBot(), 5000)
+            } else if (reason === DisconnectReason.loggedOut || 
+                       reason === DisconnectReason.badSession) {
+                console.log('❌ Session invalid, please restart bot...')
+                process.exit(1)
+            } else {
+                console.log('❓ Unknown disconnect reason:', reason)
+                setTimeout(() => startingBot(), 5000)
+            }
+        } else if (connection === 'open') {
+            console.log(chalk.green('✅ Connected to WhatsApp!'));
+            
+            // Send connection success message
+            try {
+                await whatsappClient.sendMessage(whatsappClient.user.id.split(":")[0] + "@s.whatsapp.net", {
+                    text: `✅ *DARK MD Connection Established*\n\n• Status: Connected\n• Developer: 𝐂𝐎𝐃𝐄𝐁𝐑𝐄𝐀𝐊𝐄𝐑\n• Version: ${global.version}\n\nThank you for using DARK MD!`
+                })
+            } catch (e) {
+                console.log('Note: Could not send connection message');
+            }
 
-// Groups update handler
-v8.ev.on('groups.update', async (update) => {
-		try {
-		const data = update[0]
-		const qtext = {
-    key: {
-      remoteJid: "status@broadcast",
-      participant: "0@s.whatsapp.net"
-    },
-    message: {
-      "extendedTextMessage": {
-        "text": "[ Group Notification ]"
-      }
-    }
-  }
-		if (data?.inviteCode) {      
-		let botNumber = v8.user.id.split(":")[0]
-		let participant = data.author
-		if (participant.split("@")[0] === botNumber) return      
-  await v8.sendMessage(data.id, {text: `@${participant.split("@")[0]} *reset* the group link`, mentions: [participant]}, {quoted: qtext})
-		}
-		
-		if (data?.desc) {
-		let botNumber = v8.user.id.split(":")[0]
-		let participant = data.author
-		if (participant.split("@")[0] === botNumber) return      
-		await v8.sendMessage(data.id, {text: `@${participant.split("@")[0]} *updated* the group description`, mentions: [participant]}, {quoted: qtext})
-		}
-		
-		if (data?.subject) {
-		let botNumber = v8.user.id.split(":")[0]
-		let participant = data.author
-		if (participant.split("@")[0] === botNumber) return      
-		await v8.sendMessage(data.id, {text: `@${participant.split("@")[0]} *changed* the group name`, mentions: [participant]}, {quoted: qtext})
-		}		
-		
-		} catch (e) {
-		}
-});
+            console.log("\n" + chalk.magenta.bold(`${imageAscii}`));
+            console.log(chalk.green.bold('🤖 DARK MD BOT IS NOW ONLINE!'));
+            console.log(chalk.cyan('✨ Ready to receive messages...\n'));
+            console.log(chalk.yellow('💬 Telegram Bot: Active - Users can use /reqpair to get pairing codes'));
+        } else if (receivedPendingNotifications) {
+            console.log('📥 Processing pending notifications...')
+        }
+    });
+    
+    // Message handling
+    whatsappClient.ev.on('messages.upsert', async (message) => {
+        await MessagesUpsert(whatsappClient, message, store);
+    });
 
-return v8
+    // Contacts update handler
+    whatsappClient.ev.on('contacts.update', (update) => {
+        for (let contact of update) {
+            let id = whatsappClient.decodeJid(contact.id)
+            if (store && store.contacts) store.contacts[id] = { id, name: contact.notify }
+        }
+    });
+
+    return whatsappClient
 }
 
 // Start the bot
-startingBot()
+startingBot().catch(error => {
+    console.log(chalk.red('❌ Failed to start bot:'), error);
+    process.exit(1);
+});
 
 // File watcher for hot reload
 let file = require.resolve(__filename)
 fs.watchFile(file, () => {
-	fs.unwatchFile(file)
-	console.log(chalk.redBright(`Update ${__filename}`))
-	delete require.cache[file]
-	require(file)
+    fs.unwatchFile(file)
+    console.log(chalk.redBright(`🔄 Updated ${__filename}`))
+    delete require.cache[file]
+    require(file)
 });

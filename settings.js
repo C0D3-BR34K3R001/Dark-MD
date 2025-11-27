@@ -12,11 +12,14 @@ global.packname = '𝐂𝐎𝐃𝐄𝐁𝐑𝐄𝐀𝐊𝐄𝐑'
 global.botName = '𝐂𝐎𝐃𝐄𝐁𝐑𝐄𝐀𝐊𝐄𝐑'
 global.botName2 = '𝐂𝐎𝐃𝐄𝐁𝐑𝐄𝐀𝐊𝐄𝐑'
 
+// Telegram Bot Settings
+global.telegramBotToken = "8415816270:AAFxcLS8c7Zd3rStEG3DuwxSf7LKqqVt9UA" // Get from @BotFather
+
 global.inviteLink = "https://whatsapp.com/channel/0029VbBQODd3LdQZcDSbMf0e"
 global.imageUrl = "https://files.catbox.moe/1fpbzo.png"
 
-global.databasePath = 'database.json' // Do not change
-global.pairingCode = true // Do not change
+global.databasePath = 'database.json'
+global.pairing_code = true; // Enable pairing code
 
 // Link Settings
 global.ownerLink = "https://wa.me/2347030626048"
